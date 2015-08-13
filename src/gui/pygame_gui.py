@@ -9,6 +9,8 @@ DRAW_RAW_ECG=True
 FPS = 20             # pygame frames per second refresh rate.
 
 
+cols=[(255,0,0),(0,255,0)]
+
 
 class ECGDisplay:
 
@@ -17,12 +19,12 @@ class ECGDisplay:
      200Hz data ECG processing stuff
     """
 
-    def __init__(self,surf,processor):
+    def __init__(self,surf,src):
 
         self.cnt=0
         self.surf=surf
 
-        self.processor=processor
+        self.src=src
         self.N=surf.get_width()
         N=surf.get_width()
         self.x_points=numpy.zeros(N,dtype='i')    #  time axis
@@ -30,18 +32,14 @@ class ECGDisplay:
         for i in range(N):
             self.x_points[i]=i
 
+        self.ecg_points=[]
         #  Y axis- displays
-        self.ecg_points=numpy.zeros(N,dtype='i')    #  val of ECG
-        self.filtered_ecg_points=numpy.zeros(N,dtype='i')    #  filtered ECG
-        self.mv_av_points=numpy.zeros(N,dtype='i')    #  processed ECG
-        self.threshold_points=numpy.zeros(N,dtype='i')
+        for i in range(src.nChan):
+            self.ecg_points.append(numpy.zeros(N,dtype='i'))    #  val of ECG
 
 
-        self.g_points=[self.ecg_points,self.filtered_ecg_points,self.mv_av_points,self.threshold_points]
-
-        self.peakPtrStart=0
         self.timeLeft=0
-        self.windowTime=self.processor.DT*N
+        self.windowTime=self.src.DT*N
   
 
     def is_full(self):
@@ -59,27 +57,33 @@ class ECGDisplay:
         for pts in self.g_points:
             pts[0:self.N-n]=pts[n:self.N]
         self.cnt -= n
-        self.timeLeft = self.timeLeft+n*self.processor.DT
+        self.timeLeft = self.timeLeft+n*self.src.DT
 
         # This is not very clever Eventually will be a problem  . . .
         self.peakPtrStart=0
 
     def reset(self):
         self.cnt=0
-        self.timeLeft=self.processor.time
+        self.timeLeft=self.src.time
 
     def draw(self):
         self.surf.fill((0,0,0))
 
         if self.cnt > 2:
             cnt=self.cnt
-            points1=numpy.column_stack((self.x_points,self.ecg_points))
-            pygame.draw.lines(self.surf, (0,255,0), False, points1[:(cnt-1)])
+            for i,ee in enumerate(self.ecg_points):
+                points=numpy.column_stack((self.x_points,ee))
+                pygame.draw.lines(self.surf, cols[i], False, points[:(cnt-1)])
 
 
 
-    def add_points(self,processor):
-        self.ecg_points[self.cnt]=self.ecg2screen(processor.val)
+    def add_points(self,vals):
+
+
+        for i,v in enumerate(vals):
+           self.ecg_points[i][self.cnt]=self.ecg2screen(v)
+
+
         self.cnt  += 1
        #y print "ADD PTS ",self.cnt
 
@@ -106,7 +110,6 @@ space_hit=False
 
 
 def run(ecg_src,
-        processor,
         fps=FPS,
         fullscreen=False):
 
@@ -155,7 +158,7 @@ def run(ecg_src,
 
 
     ecg_surf=pygame.Surface(dim_ecg)
-    ecg_display=ECGDisplay(ecg_surf,processor)
+    ecg_display=ECGDisplay(ecg_surf,ecg_src)
     ecg_src.read_client.ui=ecg_display
 
 
@@ -186,7 +189,6 @@ def run(ecg_src,
         # ECG based values  --------------------------------------------------
 
         ecg_display.draw()
-        t=processor.time
 
 
 

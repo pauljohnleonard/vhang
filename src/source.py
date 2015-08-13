@@ -8,10 +8,13 @@ class EcgSource (threading.Thread):
 
     def __init__(self,read_client,
                  mutex,
-                 com=None,
-                 processor=None):
-        
+                 com,nChan=2):
+
         threading.Thread.__init__(self)
+        self.time=0
+        self.DT=0.01
+        self.nChan=nChan
+        self.val=[0]*self.nChan
         self.daemon=True
         self.mutex=mutex
         self.read_client=read_client
@@ -54,21 +57,25 @@ class EcgSource (threading.Thread):
 
             if response == None:
                     return
-            print response
-            
+
             if response=="":
                 continue
-            
-            try:
-                raw=float(response)
-            except:
-                print " Ignoring currupt ECG data :",response
-                continue
-    
-            val=((raw-ref)/self.fullScale)*self.scale   # 4 is a hack until FPGA does the mult
+
+            toks=response.split()
+
+
+            for i,v in enumerate(toks):
+                #print i,v
+                try:
+                    raw=float(v)
+                except:
+                    print " Ignoring currupt ECG data :",response
+                    continue
+
+                self.val[i]=((raw-ref)/self.fullScale)*self.scale   # 4 is a hack until FPGA does the mult
             
 
-            self.read_client.process(val,self)
+            self.read_client.process(self.val)
 
 
 
@@ -86,9 +93,7 @@ class EcgSource (threading.Thread):
         
         print " ECG THREAD QUIT "
         
-        if self.fout:
-            self.fout.close()
-  
+
     def get_caption(self):
         if self.file_mode:
             return self.source.file_name
@@ -96,3 +101,8 @@ class EcgSource (threading.Thread):
             return " LIVE "
         
 
+
+
+    def process(self,val):
+        self.val=val
+        self.time += self.DT

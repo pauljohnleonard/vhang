@@ -34,18 +34,17 @@ class ReadClient:
      THis is called from the ECG thread so no gui stuff is allowed.
     """
 
-    def __init__(self,processor,mutex):
-        self.processor=processor
+    def __init__(self,mutex):
         self.mutex=mutex
 
 
     # Read ECG values and feed the processor
-    def process(self,val,replay):
+    def process(self,val):
 
 
         if self.ui != None:
             if self.ui.is_full():
-                if replay:
+                if False:
 
                     print " Hit key to continue "
 
@@ -67,11 +66,8 @@ class ReadClient:
 
         self.mutex.acquire()
 
-        self.processor.process(val)
-
-
         if self.ui != None:
-            self.ui.add_points(processor)
+            self.ui.add_points(val)
 
 
         self.mutex.release()
@@ -94,35 +90,13 @@ def myexit():
 mutex=threading.RLock()
 
 
-
-class Processor:
-
-
-    def __init__(self):
-        self.time=0
-        self.DT=0.01
-
-
-    def process(self,val):
-        self.val=val
-        self.time += self.DT
-
-processor=Processor()
-
-#  read ecg on a seperate thread feeding into the processor
-#  DON'T DO ANY GUI STUFF ON THIS THREAD
-#  aquire the lock before playing around with and display data
-
-read_client=ReadClient(processor,
-                       mutex)
+read_client=ReadClient(mutex)
 
 
 ecg_src= source.EcgSource(read_client,
                              mutex,
-                             com=COM,
-                             processor=processor)
+                             com=COM)
 
 import gui.pygame_gui as pygame_gui
 
-pygame_gui.run(ecg_src,processor,
-               fullscreen=False)
+pygame_gui.run(ecg_src,fullscreen=False)
