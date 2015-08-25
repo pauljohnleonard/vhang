@@ -4,10 +4,10 @@ import sys
 import time
 
 
-class EcgSource (threading.Thread):
+class SerialReader (threading.Thread):
 
     def __init__(self,read_client,
-                 mutex,
+                 mutex,fullscale,ref,
                  com,nChan=2):
 
         threading.Thread.__init__(self)
@@ -23,8 +23,8 @@ class EcgSource (threading.Thread):
 
         source.port=com[0]
         source.baudrate=com[1]
-        self.scale = 1
-        self.fullScale = 1024
+        self.fullScale = fullscale
+        self.ref=ref
 
         # wait for opening the serial connection.
         try:
@@ -43,7 +43,7 @@ class EcgSource (threading.Thread):
     def run(self):
        
        
-     
+        print "running serial reader"
         # Maximium value for raw ECG stream    
         ref=self.fullScale/2
 
@@ -56,24 +56,25 @@ class EcgSource (threading.Thread):
             response=self.source.readline()
 
             if response == None:
-                    return
+                print " serial read NULL Line aborting "
+                return
 
             if response=="":
                 continue
 
-            toks=response.split()
+            toks=response.split()[:self.nChan]
 
 
             for i,v in enumerate(toks):
-                #print i,v
+               # print i,v
                 try:
                     raw=float(v)
                 except:
                     print " Ignoring currupt ECG data :",response
                     continue
 
-                self.val[i]=((raw-ref)/self.fullScale)*self.scale   # 4 is a hack until FPGA does the mult
-            
+                self.val[i]=((raw-self.ref)/self.fullScale)
+
 
             self.read_client.process(self.val)
 

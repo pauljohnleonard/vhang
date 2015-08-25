@@ -1,21 +1,13 @@
 
 import threading
-import time
 import sys
 import traceback
-from os.path import expanduser
 
-import source
 
-# Defaults
-loggerRR=None
-loggerECG=None
+from filters import DCBlock
 
-# ---- Interactive viewing or processing to dump ECG and RR
-headless = False
+import serialreader
 
-SONIFY=False
-ARDUINO=None
 COM=None
 
     # If we are in live capture mode these need to be set to the USB port
@@ -36,12 +28,15 @@ class ReadClient:
 
     def __init__(self,mutex):
         self.mutex=mutex
+        self.block=DCBlock(.99999)
 
 
     # Read ECG values and feed the processor
     def process(self,val):
 
 
+        valx=self.block.process(val[0])
+        val[1]=valx
         if self.ui != None:
             if self.ui.is_full():
                 if False:
@@ -93,8 +88,8 @@ mutex=threading.RLock()
 read_client=ReadClient(mutex)
 
 
-ecg_src= source.EcgSource(read_client,
-                             mutex,
+ecg_src= serialreader.SerialReader(read_client,
+                             mutex,1024,0,
                              com=COM)
 
 import gui.pygame_gui as pygame_gui

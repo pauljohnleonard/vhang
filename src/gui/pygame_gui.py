@@ -1,5 +1,5 @@
  #        Display stuff
-import pygame,fontManager,numpy,math,time
+import pygame,fontManager,numpy,time
 
 
 
